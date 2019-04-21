@@ -102,3 +102,9 @@ venv.bak/
 
 # mypy
 .mypy_cache/
+
+# Google API credentials
+credentials/
+
+# VSCode
+.vscode/
