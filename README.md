@@ -2,11 +2,16 @@
 A simple Telegram bot that helps you registers your Blood Pressure measures into a Google Spreedsheet
 
 
-----
+# Installation
+
+1. Clone repo: `gh repo clone lecovi/bloodpressure-monitor-bot`
+2. Install dependencies: `poetry install`
+3. Copy credentials to [`credentials/`](credentials/). Follow (#google-api) for details.
+4. Run bot: `poetry run python bot`
 
 If you want to use your own Bot with your own Google Credentials your need to follow the next steps.
 
-# Google API
+## Google API
 
 1. Create a Project: [Google Resource Manager](https://console.developers.google.com/cloud-resource-manager)
     - Click on **+ Create a New Project** button
