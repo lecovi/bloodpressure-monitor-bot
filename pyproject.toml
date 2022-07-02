@@ -1,0 +1,21 @@
+[tool.poetry]
+name = "bloodpressure-monitor-bot"
+version = "0.1.0"
+description = "A simple Telegram bot that helps you registers your Blood Pressure measures into a Google Spreedsheet"
+authors = ["lecovi <lecovi@ac.python.org.ar>"]
+license = "AGPL 3.0"
+
+[tool.poetry.dependencies]
+python = "^3.10"
+google-api-python-client = "^2.52.0"
+google-auth-httplib2 = "^0.1.0"
+google-auth-oauthlib = "^0.5.2"
+python-telegram-bot = {version = "^20.0a2", allow-prereleases = true}
+emoji = "^1.7.0"
+
+[tool.poetry.dev-dependencies]
+jupyterlab = "^3.4.3"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
