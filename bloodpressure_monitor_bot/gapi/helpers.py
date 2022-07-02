@@ -29,7 +29,7 @@ def add_record(sheet, systolic, diastolic, heart_beat, spreadsheet_id=SPREADSHEE
             now,
             systolic,
             diastolic,
-            heart_beat,  
+            heart_beat if heart_beat else "N/A",
         ],
     ]
     body = {
