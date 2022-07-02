@@ -1,0 +1,9 @@
+version: '3'
+
+services:
+  bot:
+    build: .
+    image: bloodpressure-monitor-bot
+    volumes:
+      - ./credentials:/usr/src/app/credentials
+      - .:/usr/src/app
