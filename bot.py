@@ -4,7 +4,7 @@ import re
 import logging
 
 from emoji import emojize
-from telegram import Update, ForceReply
+from telegram import Update
 from telegram.ext import (
     ApplicationBuilder,
     CommandHandler,
