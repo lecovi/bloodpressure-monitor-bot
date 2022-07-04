@@ -11,9 +11,12 @@ ENV PATH /root/.poetry/bin:$PATH
 
 WORKDIR /usr/src/app
 
-COPY . .
-
 RUN poetry run python -m pip install --upgrade pip
+
+COPY poetry.lock .
+COPY pyproject.toml .
 RUN poetry install
+
+COPY . .
 
 CMD ["poetry", "run", "python", "bot.py"]
