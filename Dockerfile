@@ -9,6 +9,7 @@ RUN curl -sSL https://raw.githubusercontent.com/python-poetry/poetry/master/get-
 
 ENV PATH /root/.poetry/bin:$PATH
 
+USER user
 WORKDIR /usr/src/app
 
 COPY pyproject.toml .
