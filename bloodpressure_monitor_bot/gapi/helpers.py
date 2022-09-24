@@ -21,7 +21,7 @@ class BloodPressureGoogleSheet:
         self.id = id
         self.complete_range = sheet_range
         self.timeout = google_default_read_timeout
-        self._last_append_result = None
+        self._last_result = None
         self.scopes = [
             'https://www.googleapis.com/auth/spreadsheets',
         ]
@@ -60,30 +60,22 @@ class BloodPressureGoogleSheet:
             "values": values
         }
 
-        result = self.sheet.values().append(
+        self._last_result = self.sheet.values().append(
             spreadsheetId=self.id, 
             range=range_name,
             valueInputOption=value_input_option,
             body=body
         ).execute()
 
-        self._last_append_result = result
-
     def get_records(self, range=None):
         if range is None:
             range = self.complete_range 
 
-        results = self.sheet.values().get(
+        self._last_result = self.sheet.values().get(
             spreadsheetId=self.id,
             range=range,
         ).execute()
-        values = results.get('values', [])
-        return values
+        return self._last_result.get('values', [])
 
-    def get_last_record(self):
-        if self._last_append_result is None:
-            return None
-
-        range_ = self._last_append_result["updates"]["updatedRange"]
-        range_ = range_.split("!")[1]
-        return self.get_records(range=range_)[0]
+    def get_last_records(self, items=-1):
+        return self.get_records()[items:]
