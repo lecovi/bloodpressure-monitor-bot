@@ -69,17 +69,18 @@ async def echo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
             heart_beat = match.group(4)
 
         sheet = context.bot_data["sheet"]
-        result = sheet.add_record(
-            systolic=systolic,
-            diastolic=diastolic,
-            heart_beat=heart_beat
-        )
+        try: 
+            sheet.add_record(
+                systolic=systolic,
+                diastolic=diastolic,
+                heart_beat=heart_beat
+            )
 
-        if result:
             answer = f"SYS={systolic} DIA={diastolic} HB={heart_beat}"
             logger.info("@%s registered %s", update.effective_user['username'], answer)
-        else:
+        except Exception as e:
             answer = f":collision: Something went wrong trying to add record on spreadsheet"
+            logger.error(e)
 
     await update.message.reply_text(answer)
 
