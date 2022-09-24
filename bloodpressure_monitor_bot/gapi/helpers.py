@@ -1,3 +1,4 @@
+import logging
 from datetime import datetime
 
 from httplib2 import Http
@@ -6,46 +7,83 @@ from google.oauth2 import service_account
 from google_auth_httplib2 import AuthorizedHttp
 
 
-SCOPES = ['https://www.googleapis.com/auth/spreadsheets']
-SERVICE_ACCOUNT_FILE = 'credentials/primera.json'
-SPREADSHEET_ID = '1sm9MEHX6cC2lpgAX4kADyV_K0AYl4rpSi6SmcUdrnGU'
-SPREADSHEET_URL = f"https://docs.google.com/spreadsheets/d/{SPREADSHEET_ID}/edit#gid=0"
-RANGE = 'Hoja 1!A1:D1000'
-GOOGLE_READ_TIMEOUT = 200
+logger = logging.getLogger(__name__)
 
 
-credentials = service_account.Credentials.from_service_account_file(
-        SERVICE_ACCOUNT_FILE, scopes=SCOPES)
+class BloodPressureGoogleSheet:
+    def __init__(self,
+        service_account_file,
+        id='1sm9MEHX6cC2lpgAX4kADyV_K0AYl4rpSi6SmcUdrnGU',
+        sheet_range='Hoja 1!A1:D1000',
+        google_default_read_timeout=50,
+    ):
+        self.service_account_file = service_account_file
+        self.id = id
+        self.complete_range = sheet_range
+        self.timeout = google_default_read_timeout
+        self._last_append_result = None
+        self.scopes = [
+            'https://www.googleapis.com/auth/spreadsheets',
+        ]
+        self.url = f"https://docs.google.com/spreadsheets/d/{self.id}/edit#gid=0"
 
-http = Http(timeout=GOOGLE_READ_TIMEOUT)
-auth_http = AuthorizedHttp(credentials, http=http)
+        credentials = service_account.Credentials.from_service_account_file(
+            self.service_account_file,
+            scopes=self.scopes
+        )
 
-service = build('sheets', 'v4', http=auth_http)
+        http = Http(timeout=self.timeout)
+        auth_http = AuthorizedHttp(credentials, http=http)
 
-# Call the Sheets API
-sheet = service.spreadsheets()
+        service = build('sheets', 'v4', http=auth_http)
 
+        self.sheet = service.spreadsheets()
 
-def add_record(sheet, systolic, diastolic, heart_beat, spreadsheet_id=SPREADSHEET_ID):
-    now = datetime.now().isoformat()
+    def add_record(self,
+        systolic,
+        diastolic,
+        heart_beat,
+        value_input_option="USER_ENTERED",
+        range_name="A1:D1",
+    ):
+        now = datetime.now().isoformat()
 
-    range_name = "A1:D1"
-    values = [
-        [
-            now,
-            systolic,
-            diastolic,
-            heart_beat if heart_beat else "N/A",
-        ],
-    ]
-    body = {
-        "values": values
-    }
-    value_input_option = "USER_ENTERED"
+        values = [
+            [
+                now,
+                systolic,
+                diastolic,
+                heart_beat if heart_beat else "N/A",
+            ],
+        ]
+        body = {
+            "values": values
+        }
 
-    result = sheet.values().append(
-        spreadsheetId=spreadsheet_id, range=range_name,
-        valueInputOption=value_input_option, body=body
+        result = self.sheet.values().append(
+            spreadsheetId=self.id, 
+            range=range_name,
+            valueInputOption=value_input_option,
+            body=body
         ).execute()
 
-    return result
+        self._last_append_result = result
+
+    def get_records(self, range=None):
+        if range is None:
+            range = self.complete_range 
+
+        results = self.sheet.values().get(
+            spreadsheetId=self.id,
+            range=range,
+        ).execute()
+        values = results.get('values', [])
+        return values
+
+    def get_last_record(self):
+        if self._last_append_result is None:
+            return None
+
+        range_ = self._last_append_result["updates"]["updatedRange"]
+        range_ = range_.split("!")[1]
+        return self.get_records(range=range_)[0]
