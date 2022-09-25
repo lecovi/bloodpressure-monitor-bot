@@ -22,7 +22,7 @@ COPY pyproject.toml .
 RUN poetry run python -m pip install --upgrade pip
 
 COPY poetry.lock .
-RUN poetry install
+RUN poetry install --without dev
 
 COPY . .
 
