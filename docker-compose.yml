@@ -5,5 +5,5 @@ services:
     build: .
     image: bloodpressure-monitor-bot
     volumes:
-      - ./credentials:/usr/src/app/credentials
-      - .:/usr/src/app
+      - ./credentials:/home/user/src/app/credentials
+      - .:/home/user/src/app
