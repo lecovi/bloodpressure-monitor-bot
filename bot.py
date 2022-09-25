@@ -14,6 +14,8 @@ from bloodpressure_monitor_bot.bot.commands import (
     hello,
     last,
     echo,
+    status,
+    help,
 ) 
 
 
@@ -29,10 +31,15 @@ with open("credentials/telegram_bot.token") as f:
 
 app = ApplicationBuilder().token(TOKEN).build()
 
-app.add_handler(CommandHandler("hello", hello))
 app.add_handler(CommandHandler("start", start))
+app.add_handler(CommandHandler("hello", hello))
 app.add_handler(CommandHandler("last", last))
+app.add_handler(CommandHandler("status", status))
+app.add_handler(CommandHandler("help", help))
+
 app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, echo))
+
 app.add_error_handler(error_handler)
+
 
 app.run_polling()

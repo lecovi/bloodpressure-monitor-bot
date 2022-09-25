@@ -12,9 +12,16 @@ from .helpers import parse_bloodpressure_message
 
 logger = logging.getLogger(__name__)
 
+
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Send a message when the command /start is issued."""
     await update.message.reply_text("Starting...")
+
+    #TODO: Ask the user a gmail address
+    #TODO: Create a spreadsheet
+    #TODO: Populate spreadsheet headers
+    #TODO: Share a spreadsheet with user
+    #TODO: Share /help info
 
     user = update.effective_user
 
@@ -84,5 +91,37 @@ async def last(
 
     await update.message.reply_text(
         emojize(answer, language='alias'),
+        parse_mode=ParseMode.HTML,
+    )
+
+async def status(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    user = update.effective_user
+
+    with Sheet(service_account_file=SERVICE_ACCOUNT_FILE) as sheet:
+        values = sheet.get_records()
+
+        welcome_message = emojize(f"""Hi {user.mention_html()}!
+Connected with GOOGLE :link: <a href="{sheet.url}">Spreadsheet</a>. 
+Spreasheet has <b>{len(values)-1} records</b> :chart_increasing:.
+    """, language='alias')
+
+        await update.message.reply_html(welcome_message)
+
+
+async def help(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    help_message = """:robot: <strong>How to use this bot</strong> :question:
+
+<b>Message Format</b>
+- <code>sys/dia [hb]</code>: every time you message the bot with systolic/diastolic and heart beat pulse (<i>optional</i>) the bot will record in the spreadsheet.
+
+<b>Commands:</b>
+- /status: bot will share spreadsheet URL with number of records
+- /last <code>[number=1]</code>: bot will share last records.
+        <code>number</code> (<i>optional</i>) is used to share more than 1 record.
+- /help: will print this message
+- /hello: will say "hello" to the user
+"""
+    await update.message.reply_text(
+        emojize(help_message, language='alias'),
         parse_mode=ParseMode.HTML,
     )

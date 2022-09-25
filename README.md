@@ -23,11 +23,12 @@ If you want to use your own Bot with your own Google Credentials your need to fo
 
 # Flow
 
-- The user talk to the bot first time:
+- The user talk to the [bot](https://t.me/bloodpressure_monitor_bot) first time:
     - The bot greets the user and explains how it works:
         - `/status`: bot will share spreadsheet URL with # of records in it
         - `/last [number=1]`: bot will share last records. `number` is used to share more than 1 record.
         - `/help`: will print this message
+        - `/hello`: will say "hello" to the user
         - `sys/dia [hb]`: every time you message the bot with systolic/diastolic and heart beat pulse (optional) the bot will record in the
         spreadsheet.
 - First the bot will ask for a gmail address
