@@ -1,11 +1,8 @@
 import logging
 from datetime import datetime
-from pickletools import read_uint1
 
-from httplib2 import Http
 from googleapiclient.discovery import build
 from google.oauth2 import service_account
-from google_auth_httplib2 import AuthorizedHttp
 
 
 logger = logging.getLogger(__name__)
@@ -82,8 +79,8 @@ class BloodPressureGoogleSheet:
     def get_last_records(self, items=-1):
         return self.get_records()[items:]
 
-class BloodPressureRecord:
 
+class BloodPressureRecord:
     def __init__(self, sys, dia, hb=None, timestamp=None):
         self.sys = sys
         self.dia = dia
