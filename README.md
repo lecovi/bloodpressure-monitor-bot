@@ -2,14 +2,37 @@
 A simple Telegram bot that helps you registers your Blood Pressure measures into a Google Spreedsheet
 
 
-# Installation
+# Development
 
 1. Clone repo: `gh repo clone lecovi/bloodpressure-monitor-bot`
-2. Install dependencies: `poetry install`
-3. Copy credentials to [`credentials/`](credentials/). Follow (#google-api) for details.
-4. Run bot: `poetry run python bot`
+1. Copy credentials to [`credentials/`](credentials/). 
+    - Follow (#google-api) for details on obtaining Google credentials.
+    - Follow [Telegram Docs](https://core.telegram.org/bots/api)
+1. Build docker images: `docker compose build --no-cache`
+1. Run bot: `docker compose up`
+1. **Optional** Install dependencies in your local environment: `poetry install`
+    1. **Optional** If you wanna play with Jupyter: `poetry run jupyter lab`
 
 If you want to use your own Bot with your own Google Credentials your need to follow the next steps.
+
+# Deploy
+
+1. Clone repo: `gh repo clone lecovi/bloodpressure-monitor-bot`
+1. Copy credentials to [`credentials/`](credentials/).
+1. Run with `docker compose up -d`
+
+# Flow
+
+- The user talk to the bot first time:
+    - The bot greets the user and explains how it works:
+        - `/status`: bot will share spreadsheet URL with # of records in it
+        - `/last [number=1]`: bot will share last records. `number` is used to share more than 1 record.
+        - `/help`: will print this message
+        - `sys/dia [hb]`: every time you message the bot with systolic/diastolic and heart beat pulse (optional) the bot will record in the
+        spreadsheet.
+- First the bot will ask for a gmail address
+- The bot will create a new spreadsheet and share it with the user
+- The bot receive messages and records the bloodpressure measure
 
 ## Google API
 
