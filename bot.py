@@ -15,7 +15,7 @@ from telegram.ext import (
     filters,
 )
 
-from bloodpressure_monitor_bot.gapi.helpers import BloodPressureGoogleSheet
+from bloodpressure_monitor_bot.gapi.helpers import BloodPressureGoogleSheet as Sheet
 
 
 BLOODPRESSURE_REGEX_PATTERN = "(\d{2,3})\/(\d{2,3})( (\d{2,3}))?"
@@ -40,17 +40,15 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
     user = update.effective_user
 
-    sheet = BloodPressureGoogleSheet(service_account_file=SERVICE_ACCOUNT_FILE)
-    context.bot_data["sheet"] = sheet
+    with Sheet(service_account_file=SERVICE_ACCOUNT_FILE) as sheet:
+        values = sheet.get_records()
 
-    values = sheet.get_records()
-
-    welcome_message = emojize(f"""Hi {user.mention_html()}!
+        welcome_message = emojize(f"""Hi {user.mention_html()}!
 Connected with GOOGLE :link: <a href="{sheet.url}">Spreadsheet</a>. 
 Spreasheet has <b>{len(values)-1} records</b> :chart_increasing:.
-""", language='alias')
+    """, language='alias')
 
-    await update.message.reply_html(welcome_message)
+        await update.message.reply_html(welcome_message)
 
 
 async def hello(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -70,21 +68,28 @@ async def echo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         if heart_beat:
             heart_beat = match.group(4)
 
-        sheet = context.bot_data["sheet"]
-        try: 
-            sheet.add_record(
-                systolic=systolic,
-                diastolic=diastolic,
-                heart_beat=heart_beat
-            )
-
-            answer = f"SYS={systolic} DIA={diastolic} HB={heart_beat}"
-            logger.info("@%s registered %s", update.effective_user['username'], answer)
+        try:
+            with Sheet(service_account_file=SERVICE_ACCOUNT_FILE) as sheet:
+                sheet.add_record(
+                    systolic=systolic,
+                    diastolic=diastolic,
+                    heart_beat=heart_beat
+                )
+                answer = f":heart: <strong>{systolic}/{diastolic}</strong> {heart_beat}"
+                logger.info("@%s registered SYS=%s DIA=%s HB=%s",
+                    update.effective_user['username'],
+                    systolic,
+                    diastolic,
+                    heart_beat,
+                )
         except Exception as e:
-            answer = f":collision: Something went wrong trying to add record on spreadsheet"
+            answer = ":collision: Something went wrong trying to add record :collision:"
             logger.error(e)
 
-    await update.message.reply_text(answer)
+    await update.message.reply_text(
+        emojize(answer, language='alias'),
+        parse_mode=ParseMode.HTML,
+    )
 
 
 async def last(
@@ -96,15 +101,18 @@ async def last(
     else:
         items = -1
 
-    sheet = context.bot_data["sheet"]
-    records = sheet.get_last_records(items)
+    # sheet = context.bot_data["sheet"]
+    with Sheet(service_account_file=SERVICE_ACCOUNT_FILE) as sheet:
+        records = sheet.get_last_records(items)
 
-    answer = ""
-    for record in records:
-        timestamp, sys, dia, hb = record
-        answer += f"{timestamp} {sys}/{dia} {hb}\n"
-    await update.message.reply_text(answer)
-
+        answer = ""
+        for record in records:
+            timestamp, sys, dia, hb = record
+            answer += f":calendar: {timestamp} :heart: <strong>{sys}/{dia}</strong> {hb}\n"
+        await update.message.reply_text(
+            emojize(answer, language='alias'),
+            parse_mode=ParseMode.HTML,
+        )
 
 
 async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE) -> None:
