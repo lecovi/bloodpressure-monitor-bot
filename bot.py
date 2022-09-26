@@ -7,7 +7,6 @@ from telegram.ext import (
     filters,
 )
 
-from bloodpressure_monitor_bot.gapi.helpers import BloodPressureGoogleSheet as Sheet
 from bloodpressure_monitor_bot.bot.errors import error_handler
 from bloodpressure_monitor_bot.bot.commands import (
     start,
@@ -16,6 +15,7 @@ from bloodpressure_monitor_bot.bot.commands import (
     echo,
     status,
     help,
+    connect,
 ) 
 
 
@@ -36,6 +36,7 @@ app.add_handler(CommandHandler("hello", hello))
 app.add_handler(CommandHandler("last", last))
 app.add_handler(CommandHandler("status", status))
 app.add_handler(CommandHandler("help", help))
+app.add_handler(CommandHandler("connect", connect))
 
 app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, echo))
 

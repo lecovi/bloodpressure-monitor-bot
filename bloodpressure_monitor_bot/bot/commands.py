@@ -5,39 +5,61 @@ from telegram.ext import ContextTypes
 from telegram.constants import ParseMode
 from telegram import Update
 
-from bloodpressure_monitor_bot.gapi.helpers import BloodPressureGoogleSheet as Sheet
+from bloodpressure_monitor_bot.gapi.helpers import BloodPressureSheet as Sheet
+from bloodpressure_monitor_bot.gapi.helpers import BloodPressureRecord
 from .constants import SERVICE_ACCOUNT_FILE
 from .helpers import parse_bloodpressure_message
 
 
 logger = logging.getLogger(__name__)
-
+USER_EMAIL = "colomboleandro@gmail.com"
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Send a message when the command /start is issued."""
     await update.message.reply_text("Starting...")
 
     #TODO: Ask the user a gmail address
-    #TODO: Create a spreadsheet
-    #TODO: Populate spreadsheet headers
-    #TODO: Share a spreadsheet with user
     #TODO: Share /help info
+
+    user_email= USER_EMAIL  #FIXME
+
+    sheet = Sheet(service_account_file=SERVICE_ACCOUNT_FILE, user_email=user_email)
+    sheet.create_shared_sheet(title=f"Bloodpressure Monitor Sheet for {user_email}")
+    context.bot_data["sheet"] = sheet
 
     user = update.effective_user
 
-    with Sheet(service_account_file=SERVICE_ACCOUNT_FILE) as sheet:
-        values = sheet.get_records()
+    welcome_message = emojize(
+        f"""Hi {user.mention_html()}!
+A new :link: <a href="{sheet.url}">Spreadsheet Created</a> :chart_increasing:.""",
+        language='alias',
+    )
 
-        welcome_message = emojize(f"""Hi {user.mention_html()}!
-Connected with GOOGLE :link: <a href="{sheet.url}">Spreadsheet</a>. 
-Spreasheet has <b>{len(values)-1} records</b> :chart_increasing:.
-    """, language='alias')
+    await help(update==update, context=context)  #FIXME: no se ejecuta, no sé por qué
 
-        await update.message.reply_html(welcome_message)
+    await update.message.reply_html(welcome_message)
 
 
 async def hello(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     await update.message.reply_text(f'Hola {update.effective_user.first_name}')
+
+
+async def connect(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    if not context.args:
+        answer = "Tenés que darme un ID de un Spreadsheet :shrug:"
+        await update.message.reply_text(
+            emojize(answer, language='alias'),
+            parse_mode=ParseMode.HTML,
+        )
+        return
+
+    sheet = Sheet(service_account_file=SERVICE_ACCOUNT_FILE, user_email=USER_EMAIL)
+    sheet.spreadsheet_id = context.args[0]
+    context.bot_data["sheet"] = sheet
+
+    await update.message.reply_text("Conecting...")
+
+    await status(update=update, context=context)
 
 
 async def echo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -49,21 +71,19 @@ async def echo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     if not parsed_message:
         answer = "Perdón, no te entendí :worried_face:"
     else:
-        sys, dia, hb = parsed_message
+        record = BloodPressureRecord(*parsed_message)
         try:
-            with Sheet(service_account_file=SERVICE_ACCOUNT_FILE) as sheet:
-                sheet.add_record(
-                    systolic=sys,
-                    diastolic=dia,
-                    heart_beat=hb,
-                )
-                answer = f":heart: <strong>{sys}/{dia}</strong> {hb}"
-                logger.info("@%s registered SYS=%s DIA=%s HB=%s",
-                    update.effective_user['username'],
-                    sys,
-                    dia,
-                    hb,
-                )
+            sheet = context.bot_data["sheet"]
+            sheet.add_record(record)
+
+            _, sys, dia, hb = record.to_values()
+            answer = f":heart: <strong>{sys}/{dia}</strong> {hb}"
+            logger.info("@%s registered SYS=%s DIA=%s HB=%s",
+                update.effective_user['username'],
+                sys,
+                dia,
+                hb,
+            )
         except Exception as e:
             answer = ":collision: Something went wrong trying to add record :collision:"
             logger.error(e)
@@ -74,20 +94,15 @@ async def echo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     )
 
 
-async def last(
-    update: Update,
-    context: ContextTypes.DEFAULT_TYPE,
-) -> None:
-
+async def last(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     items = -int(context.args[0]) if context.args else -1
+    sheet = context.bot_data["sheet"]
+    records = sheet.get_last_records(items)
+    answer = ""
 
-    with Sheet(service_account_file=SERVICE_ACCOUNT_FILE) as sheet:
-        records = sheet.get_last_records(items)
-
-        answer = ""
-        for record in records:
-            timestamp, sys, dia, hb = record
-            answer += f":calendar: {timestamp} :heart: <strong>{sys}/{dia}</strong> {hb}\n"
+    for record in records:
+        timestamp, sys, dia, hb = record
+        answer += f":calendar: {timestamp} :heart: <strong>{sys}/{dia}</strong> {hb}\n"
 
     await update.message.reply_text(
         emojize(answer, language='alias'),
@@ -96,16 +111,16 @@ async def last(
 
 async def status(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     user = update.effective_user
+    sheet = context.bot_data["sheet"]
 
-    with Sheet(service_account_file=SERVICE_ACCOUNT_FILE) as sheet:
-        values = sheet.get_records()
+    values = sheet.get_records()
 
-        welcome_message = emojize(f"""Hi {user.mention_html()}!
+    welcome_message = emojize(f"""Hi {user.mention_html()}!
 Connected with GOOGLE :link: <a href="{sheet.url}">Spreadsheet</a>. 
 Spreasheet has <b>{len(values)-1} records</b> :chart_increasing:.
     """, language='alias')
 
-        await update.message.reply_html(welcome_message)
+    await update.message.reply_html(welcome_message)
 
 
 async def help(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:

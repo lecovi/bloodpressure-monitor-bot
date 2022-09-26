@@ -1,83 +1,15 @@
 import logging
 from datetime import datetime
 
-from googleapiclient.discovery import build
-from google.oauth2 import service_account
+from .constants import (
+    DEFAULT_GOOGLE_SHEET_VALUE_INPUT_OPTION,
+    DEFAULT_GOOGLE_SHEET_RANGE_NAME,
+    DEFAULT_GOOGLE_SHEET_COMPLETE_RANGE_NAME,
+)
+from .services import SheetService, DriveService
 
 
 logger = logging.getLogger(__name__)
-
-
-DEFAULT_GOOGLE_SCOPES = [
-            'https://www.googleapis.com/auth/spreadsheets',
-        ]
-
-class BloodPressureGoogleSheet:
-    def __init__(self,
-        service_account_file,
-        id='1sm9MEHX6cC2lpgAX4kADyV_K0AYl4rpSi6SmcUdrnGU',
-        sheet_range='Hoja 1!A1:D1000',
-        scopes=None,
-    ):
-        self.service_account_file = service_account_file
-        self.id = id
-        self.complete_range = sheet_range
-        self.scopes = scopes if scopes is not None else DEFAULT_GOOGLE_SCOPES
-
-        self._credentials = service_account.Credentials.from_service_account_file(
-            self.service_account_file,
-            scopes=self.scopes
-        )
-
-        self._last_result = None
-        self._service = None
-        self.sheet = None
-
-    def __enter__(self):
-        self._service = build('sheets', 'v4', credentials=self._credentials)
-        self.sheet = self._service.spreadsheets()
-        return self
-
-    def __exit__(self, exc_type, exc_value, exc_traceback):
-        self.sheet = None
-        self._service.close()
-
-    @property
-    def url(self):
-        SPREADSHEET_URL_TEMPLATE = f"https://docs.google.com/spreadsheets/d/{self.id}/edit#gid=0"
-        return SPREADSHEET_URL_TEMPLATE
-
-    def add_record(self,
-        systolic,
-        diastolic,
-        heart_beat,
-        value_input_option="USER_ENTERED",
-        range_name="A1:D1",
-    ):
-        record = BloodPressureRecord(systolic, diastolic, heart_beat)
-
-        self._last_result = self.sheet.values().append(
-            spreadsheetId=self.id, 
-            range=range_name,
-            valueInputOption=value_input_option,
-            body=record.to_spreadsheet_body()
-        ).execute()
-        self._last_result["timestamp"] = record.timestamp  #TODO: became decorator
-
-    def get_records(self, range=None):
-        if range is None:
-            range = self.complete_range 
-
-        self._last_result = self.sheet.values().get(
-            spreadsheetId=self.id,
-            range=range,
-        ).execute()
-        now = datetime.now().isoformat()  #TODO: became decorator
-        self._last_result["timestamp"] = now  #TODO: became decorator
-        return self._last_result.get('values', [])
-
-    def get_last_records(self, items=-1):
-        return self.get_records()[items:]
 
 
 class BloodPressureRecord:
@@ -106,3 +38,102 @@ class BloodPressureRecord:
                 self.to_values(),
             ]
         }
+
+
+class BloodPressureSheet:
+    def __init__(self, service_account_file, user_email):
+        self._service_account_file = service_account_file
+        self.user_email = user_email
+        self._last_result = None
+        self.spreadsheet_id = None
+
+    @property
+    def url(self):
+        SPREADSHEET_URL_TEMPLATE = f"https://docs.google.com/spreadsheets/d/{self.spreadsheet_id}/edit#gid=0"
+        return SPREADSHEET_URL_TEMPLATE
+
+    def _create_sheet_file(self, title):
+        body = {
+            'properties': {
+                'title': title
+                }
+        }
+        with SheetService(self._service_account_file) as gservice:
+            self._last_result = gservice.spreadsheets().create(
+                body=body, 
+                fields='spreadsheetId'
+            ).execute()
+            self.spreadsheet_id = self._last_result["spreadsheetId"]
+
+        logger.info("Spreadsheet %s created for %s",
+            self.spreadsheet_id,
+            self.user_email,
+        )
+        return self._last_result
+
+    def _write_bloodpressure_headers(self, headers: list|None = None):
+        body = {
+            "values": headers if headers else [["Timestamp", "SYS", "DIA", "HB"],]
+        }
+        with SheetService(self._service_account_file) as gservice:
+            self._last_result = gservice.spreadsheets().values().append(
+                spreadsheetId=self.spreadsheet_id, 
+                range=DEFAULT_GOOGLE_SHEET_RANGE_NAME,
+                valueInputOption=DEFAULT_GOOGLE_SHEET_VALUE_INPUT_OPTION,
+                body=body
+            ).execute()
+
+        logger.debug("Bloodpressure Headers writed on Spreadsheet %s",
+            self.spreadsheet_id,
+        )
+
+        return self._last_result
+
+    def _share_sheet(self, sheet_id, email):
+        user_permission = {
+            'type': 'user',
+            'role': 'writer',
+            'emailAddress': email,
+        }
+
+        with DriveService(self._service_account_file) as gservice:
+            self._last_result = gservice.permissions().create(
+                fileId=sheet_id,
+                body=user_permission,
+                fields='id',
+            ).execute()
+        
+        logger.info("Spreadsheet %s shared with %s",
+            self.spreadsheet_id,
+            self.user_email,
+        )
+        return self._last_result
+
+    def create_shared_sheet(self, title):
+        self._create_sheet_file(title=title)
+
+        self._write_bloodpressure_headers()
+
+        self._share_sheet(sheet_id=self.spreadsheet_id, email=self.user_email)
+
+    def add_record(self, record: BloodPressureRecord):
+        with SheetService(self._service_account_file) as gservice:
+            self._last_result = gservice.spreadsheets().values().append(
+                spreadsheetId=self.spreadsheet_id, 
+                range=DEFAULT_GOOGLE_SHEET_RANGE_NAME,
+                valueInputOption=DEFAULT_GOOGLE_SHEET_VALUE_INPUT_OPTION,
+                body=record.to_spreadsheet_body()
+            ).execute()
+        return self._last_result
+
+    def get_records(self, range=DEFAULT_GOOGLE_SHEET_COMPLETE_RANGE_NAME):
+        with SheetService(self._service_account_file) as gservice:
+            self._last_result = gservice.spreadsheets().values().get(
+                spreadsheetId=self.spreadsheet_id,
+                range=range,
+            ).execute()
+
+        return self._last_result.get('values', [])
+
+    def get_last_records(self, items=-1):
+        return self.get_records()[items:]
