@@ -4,6 +4,22 @@ services:
   bot:
     build: .
     image: bloodpressure-monitor-bot
+    env_file:
+      - .env
     volumes:
       - ./credentials:/home/user/src/app/credentials
       - .:/home/user/src/app
+
+  db:
+    image: postgres:14.5-alpine3.16
+    env_file:
+      - .env
+    environment:
+      - POSTGRES_PASSWORD=$DB_PASSWORD
+    ports:
+      - 5432:5432
+    volumes:
+      - dbdata:/var/lib/postgresql/data/
+
+volumes:
+  dbdata:

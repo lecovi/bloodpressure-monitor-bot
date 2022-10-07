@@ -14,6 +14,7 @@ from .helpers import parse_bloodpressure_message
 logger = logging.getLogger(__name__)
 USER_EMAIL = "colomboleandro@gmail.com"
 
+
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Send a message when the command /start is issued."""
     await update.message.reply_text("Starting...")
