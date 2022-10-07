@@ -35,6 +35,13 @@ If you want to use your own Bot with your own Google Credentials your need to fo
 - The bot will create a new spreadsheet and share it with the user
 - The bot receive messages and records the bloodpressure measure
 
+# TODO
+
+- [ ] Ver cómo se puede manejar el timezone del mensaje para que en el cliente aparezca "bien"
+- [ ] Sumar DB para relacionar clientes con hojas de cálculo
+- [ ] Armar flujo de conversación para `/start`
+- [ ] Soporte para comments en la medición
+
 ## Google API
 
 1. Create a Project: [Google Resource Manager](https://console.developers.google.com/cloud-resource-manager)

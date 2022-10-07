@@ -7,7 +7,7 @@ from telegram import Update
 
 from bloodpressure_monitor_bot.gapi.helpers import BloodPressureSheet as Sheet
 from bloodpressure_monitor_bot.gapi.helpers import BloodPressureRecord
-from .constants import SERVICE_ACCOUNT_FILE
+from bloodpressure_monitor_bot.gapi.constants import SERVICE_ACCOUNT_FILE
 from .helpers import parse_bloodpressure_message
 
 
