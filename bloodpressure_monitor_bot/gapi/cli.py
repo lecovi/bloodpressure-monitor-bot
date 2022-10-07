@@ -3,12 +3,16 @@ import json
 import typer
 from rich import print
 from rich.table import Table
+from googleapiclient.errors import HttpError
+
 
 from .constants import SERVICE_ACCOUNT_FILE, DEFAULT_GOOGLE_SCOPES
 from .services import DriveService, GoogleService
 
 
 app = typer.Typer()
+
+
 with open(SERVICE_ACCOUNT_FILE) as f:
     account_file = json.load(f)
     BOT_EMAIL = account_file["client_email"]
@@ -66,4 +70,14 @@ def list():
 
     print(table)
 
+@app.command()
+def delete(file_id):
+    print("Connecting to Google Drive...")
+    with DriveService(SERVICE_ACCOUNT_FILE) as gservice:
+        try:
+            result = gservice.files().delete(fileId=file_id).execute()
+            print(result)
+            print(f":wastebasket: Deleted {file_id}!")
+        except HttpError as err:
+            print(err)
 
