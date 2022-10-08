@@ -7,85 +7,77 @@ from .core import engine, DB_URI, User
 
 app = typer.Typer()
 users = typer.Typer()
-app.add_typer(users, name="user")
+app.add_typer(users, name="user", help="Manage User records")
 
 
 @app.command()
 def create():
+    "Creates database schema"
     SQLModel.metadata.create_all(engine)
     print(f"Creating database :right_arrow: {DB_URI}")
 
 
 @app.command()
 def delete():
+    "Deletes database schema"
     SQLModel.metadata.drop_all(engine)
-    print(f"Deleting database :right_arrow: {DB_URI}")
+    print(f":wastebasket: Deleting database :right_arrow: {DB_URI}")
 
 
 @users.command()
 def add(name=None, telegram_handler=None, email=None, sheet_id=None):
-    user = User(name=name, telegram_handler=telegram_handler, email=email, sheet_id=sheet_id)
-    with Session(engine) as session:
-        session.add(user)
-        session.commit()
+    "Adds a new User record into DB"
+    user = User.add(
+        name=name,
+        telegram_handler=telegram_handler,
+        email=email,
+        sheet_id=sheet_id
+    )
     print(user)
 
 
 @users.command()
 def get(id):
-    with Session(engine) as session:
-        statement = select(User).where(User.id == id)
-        user = session.exec(statement).first()
+    "Get user with the given ID"
+    user = User.get(id)
     print(user)
 
 
 @users.command()
 def get_all():
-    with Session(engine) as session:
-        statement = select(User)
-        users = session.exec(statement)
-        for user in users:
-            print(user)
+    "Get all users in DB"
+    users = User.get_all()
+    print(users)
+    print(f"Total {len(users)} users")
 
 
 @users.command()
 def update(id, name=None, telegram_handler=None, email=None, sheet_id=None):
-    with Session(engine) as session:
-        # Get the user
-        statement = select(User).where(User.id == id)
-        user = session.exec(statement).first()
-        if user is None:
-            print(":confused_face: User does not exists!")
-            return 
+    "Updates user with the given ID"
 
-        # Update values
-        if name is not None:
-            user.name = name
-        if telegram_handler is not None:
-            user.telegram_handler = telegram_handler
-        if email is not None:
-            user.email = email
-        if sheet_id is not None:
-            user.sheet_id = sheet_id
+    user = User.get(id)
+    if user is None:
+        print(":confused_face: User does not exists!")
+        return 
 
-        # Save to DB
-        session.add(user)
-        session.commit()
+    user.update(
+        name=name,
+        telegram_handler=telegram_handler,
+        sheet_id=sheet_id,
+        email=email,
+    )
 
-        print(user)
+    print(user)
 
 
 @users.command()
 def delete(id):
-    with Session(engine) as session:
-        # Get the user
-        statement = select(User).where(User.id == id)
-        user = session.exec(statement).first()
-        if user is None:
-            print(":confused_face: User does not exists!")
-            return 
+    "Removes user with the given ID from DB"
+    user = User.get(id)
+    if user is None:
+        print(":confused_face: User does not exists!")
+        return 
 
-        session.delete(user)
-        session.commit()
+    user.delete()
 
     print(f":wastebasket: Deleted user", user)

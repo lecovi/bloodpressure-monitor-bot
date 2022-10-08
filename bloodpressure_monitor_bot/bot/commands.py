@@ -45,6 +45,8 @@ async def hello(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     await update.message.reply_text(f'Hola {update.effective_user.first_name}')
 
 
+
+
 async def connect(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     if not context.args:
         answer = "Tenés que darme un ID de un Spreadsheet :shrug:"
@@ -65,6 +67,10 @@ async def connect(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
 async def echo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Echo the user message."""
+    # Recognize user and search it in DB
+    # If user is in DB, load sheet
+    # If not, respond that user should /start
+
     message = update.message.text
 
     parsed_message = parse_bloodpressure_message(message)
