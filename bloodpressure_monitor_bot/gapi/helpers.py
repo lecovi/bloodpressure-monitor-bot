@@ -49,8 +49,7 @@ class BloodPressureSheet:
 
     @property
     def url(self):
-        SPREADSHEET_URL_TEMPLATE = f"https://docs.google.com/spreadsheets/d/{self.spreadsheet_id}/edit#gid=0"
-        return SPREADSHEET_URL_TEMPLATE
+        return f"https://docs.google.com/spreadsheets/d/{self.spreadsheet_id}/edit#gid=0"
 
     def _create_sheet_file(self, title):
         body = {

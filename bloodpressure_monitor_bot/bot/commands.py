@@ -1,50 +1,47 @@
 import logging
 
 from emoji import emojize
-from telegram.ext import ContextTypes
+from telegram.ext import ContextTypes, ConversationHandler
 from telegram.constants import ParseMode
-from telegram import Update
+from telegram import Update, ReplyKeyboardMarkup, ReplyKeyboardRemove
 
+from bloodpressure_monitor_bot.db.core import User
 from bloodpressure_monitor_bot.gapi.helpers import BloodPressureSheet as Sheet
-from bloodpressure_monitor_bot.gapi.helpers import BloodPressureRecord
 from bloodpressure_monitor_bot.gapi.constants import SERVICE_ACCOUNT_FILE
-from .helpers import parse_bloodpressure_message
+from .constants import (
+    HELP_MESSAGE,
+    MAIL,
+    REGISTER_TA,
+)
 
 
 logger = logging.getLogger(__name__)
-USER_EMAIL = "colomboleandro@gmail.com"
 
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Send a message when the command /start is issued."""
     await update.message.reply_text("Starting...")
-
-    #TODO: Ask the user a gmail address
-    #TODO: Share /help info
-
-    user_email= USER_EMAIL  #FIXME
-
-    sheet = Sheet(service_account_file=SERVICE_ACCOUNT_FILE, user_email=user_email)
-    sheet.create_shared_sheet(title=f"Bloodpressure Monitor Sheet for {user_email}")
-    context.bot_data["sheet"] = sheet
-
+    # Everything is inside update.effective_user object
+    #     full_name == f"{first_name} {last_name}"
+    #     name == f"@{username}"
+    #     link == f"https://t.me/{username}"
     user = update.effective_user
 
-    welcome_message = emojize(
-        f"""Hi {user.mention_html()}!
-A new :link: <a href="{sheet.url}">Spreadsheet Created</a> :chart_increasing:.""",
-        language='alias',
+    logger.debug("~~~~~~~~~~~~~~~ Starting with user %s", user)
+
+    reply_keyboard = [["Yes", "No"]]
+
+    await update.message.reply_text(
+        emojize(HELP_MESSAGE, language='alias'),
+        parse_mode=ParseMode.HTML,
+        reply_markup=ReplyKeyboardMarkup(
+            reply_keyboard, 
+            one_time_keyboard=True,
+            input_field_placeholder="Do you want to continue?",
+        ),
     )
 
-    await help(update==update, context=context)  #FIXME: no se ejecuta, no sé por qué
-
-    await update.message.reply_html(welcome_message)
-
-
-async def hello(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    await update.message.reply_text(f'Hola {update.effective_user.first_name}')
-
-
+    return MAIL
 
 
 async def connect(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -54,10 +51,26 @@ async def connect(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
             emojize(answer, language='alias'),
             parse_mode=ParseMode.HTML,
         )
-        return
+        return REGISTER_TA
 
-    sheet = Sheet(service_account_file=SERVICE_ACCOUNT_FILE, user_email=USER_EMAIL)
-    sheet.spreadsheet_id = context.args[0]
+    tg_id = update.effective_user.username
+    gsheet_id = context.args[0]
+
+    user = User.get_by_tg_id(tg_id=tg_id)
+    if user is None:
+        answer = f':wave: Hola <b>{update.effective_user.username}</b> usá /start'
+        await update.message.reply_text(
+            emojize(answer, language='alias'),
+            parse_mode=ParseMode.HTML,
+        )
+        return MAIL
+
+    user.update(gsheet_id=gsheet_id)
+
+    logger.debug("User %s connecting %s Google Spreadsheet", tg_id, gsheet_id)
+
+    sheet = Sheet(service_account_file=SERVICE_ACCOUNT_FILE, user_email=user.email)
+    sheet.spreadsheet_id = gsheet_id
     context.bot_data["sheet"] = sheet
 
     await update.message.reply_text("Conecting...")
@@ -65,45 +78,27 @@ async def connect(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     await status(update=update, context=context)
 
 
-async def echo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Echo the user message."""
-    # Recognize user and search it in DB
-    # If user is in DB, load sheet
-    # If not, respond that user should /start
-
-    message = update.message.text
-
-    parsed_message = parse_bloodpressure_message(message)
-
-    if not parsed_message:
-        answer = "Perdón, no te entendí :worried_face:"
-    else:
-        record = BloodPressureRecord(*parsed_message)
-        try:
-            sheet = context.bot_data["sheet"]
-            sheet.add_record(record)
-
-            _, sys, dia, hb = record.to_values()
-            answer = f":heart: <strong>{sys}/{dia}</strong> {hb}"
-            logger.info("@%s registered SYS=%s DIA=%s HB=%s",
-                update.effective_user['username'],
-                sys,
-                dia,
-                hb,
-            )
-        except Exception as e:
-            answer = ":collision: Something went wrong trying to add record :collision:"
-            logger.error(e)
-
-    await update.message.reply_text(
-        emojize(answer, language='alias'),
-        parse_mode=ParseMode.HTML,
-    )
-
-
 async def last(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    tg_user = update.effective_user
     items = -int(context.args[0]) if context.args else -1
-    sheet = context.bot_data["sheet"]
+
+    user = User.get_by_tg_id(tg_id=tg_user.id)
+    if user is None:
+        answer = f':wave: Hola <b>{tg_user.username}</b> usá /start'
+        await update.message.reply_text(
+            emojize(answer, language='alias'),
+            parse_mode=ParseMode.HTML,
+        )
+        return ConversationHandler.END
+
+
+    logger.debug("User %s asked last {%s} items.", tg_user.first_name, items)
+
+    sheet = context.bot_data.get("sheet")
+    if sheet is None:
+        sheet = Sheet(service_account_file=SERVICE_ACCOUNT_FILE, user_email=user.email)
+        sheet.spreadsheet_id = user.gsheet_id
+
     records = sheet.get_last_records(items)
     answer = ""
 
@@ -116,34 +111,60 @@ async def last(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         parse_mode=ParseMode.HTML,
     )
 
+
 async def status(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    user = update.effective_user
-    sheet = context.bot_data["sheet"]
+    tg_user = update.effective_user
+    
+    user = User.get_by_tg_id(tg_id=tg_user.id)
+    if user is None:
+        answer = f':wave: Hola <b>{tg_user.username}</b> usá /start'
+        await update.message.reply_text(
+            emojize(answer, language='alias'),
+            parse_mode=ParseMode.HTML,
+        )
+        return ConversationHandler.END
+
+    logger.debug("User %s asked for status.", tg_user.first_name)
+
+    sheet = context.bot_data.get("sheet")
+    if sheet is None:
+        sheet = Sheet(service_account_file=SERVICE_ACCOUNT_FILE, user_email=user.email)
+        sheet.spreadsheet_id = user.gsheet_id
 
     values = sheet.get_records()
 
-    welcome_message = emojize(f"""Hi {user.mention_html()}!
+    welcome_message = emojize(f"""Hi {tg_user.mention_html()}!
 Connected with GOOGLE :link: <a href="{sheet.url}">Spreadsheet</a>. 
 Spreasheet has <b>{len(values)-1} records</b> :chart_increasing:.
     """, language='alias')
 
     await update.message.reply_html(welcome_message)
 
+    return REGISTER_TA
+
 
 async def help(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    help_message = """:robot: <strong>How to use this bot</strong> :question:
+    user = update.message.from_user
 
-<b>Message Format</b>
-- <code>sys/dia [hb]</code>: every time you message the bot with systolic/diastolic and heart beat pulse (<i>optional</i>) the bot will record in the spreadsheet.
+    logger.debug("User %s asked for help.", user.first_name)
 
-<b>Commands:</b>
-- /status: bot will share spreadsheet URL with number of records
-- /last <code>[number=1]</code>: bot will share last records.
-        <code>number</code> (<i>optional</i>) is used to share more than 1 record.
-- /help: will print this message
-- /hello: will say "hello" to the user
-"""
     await update.message.reply_text(
-        emojize(help_message, language='alias'),
+        emojize(HELP_MESSAGE, language='alias'),
         parse_mode=ParseMode.HTML,
     )
+
+    return REGISTER_TA
+
+
+async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    """Cancels and ends the conversation."""
+    user = update.message.from_user
+
+    logger.info("User %s canceled the conversation.", user.first_name)
+
+    await update.message.reply_text(
+        "Bye! I hope we can talk again some day. Start again with /start",
+        reply_markup=ReplyKeyboardRemove(),
+    )
+
+    return ConversationHandler.END

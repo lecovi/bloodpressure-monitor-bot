@@ -18,20 +18,20 @@ def create():
 
 
 @app.command()
-def delete():
-    "Deletes database schema"
+def drop():
+    "Drops database schema"
     SQLModel.metadata.drop_all(engine)
     print(f":wastebasket: Deleting database :right_arrow: {DB_URI}")
 
 
 @users.command()
-def add(name=None, telegram_handler=None, email=None, sheet_id=None):
+def add(tg_id=None, tg_username=None, email=None, gsheet_id=None):
     "Adds a new User record into DB"
     user = User.add(
-        name=name,
-        telegram_handler=telegram_handler,
+        tg_id=tg_id,
+        tg_username=tg_username,
         email=email,
-        sheet_id=sheet_id
+        gsheet_id=gsheet_id
     )
     print(user)
 
@@ -52,7 +52,7 @@ def get_all():
 
 
 @users.command()
-def update(id, name=None, telegram_handler=None, email=None, sheet_id=None):
+def update(id, tg_id=None, tg_username=None, email=None, gsheet_id=None):
     "Updates user with the given ID"
 
     user = User.get(id)
@@ -61,9 +61,9 @@ def update(id, name=None, telegram_handler=None, email=None, sheet_id=None):
         return 
 
     user.update(
-        name=name,
-        telegram_handler=telegram_handler,
-        sheet_id=sheet_id,
+        tg_id=tg_id,
+        tg_username=tg_username,
+        gsheet_id=gsheet_id,
         email=email,
     )
 
