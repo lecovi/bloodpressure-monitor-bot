@@ -1,3 +1,4 @@
+import os
 import logging
 
 from telegram import MessageEntity
@@ -39,7 +40,8 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
-with open("credentials/telegram_bot.token") as f:
+TG_TOKEN_FILE=os.getenv("TG_TOKEN_FILE")
+with open(TG_TOKEN_FILE) as f:
     TOKEN = f.read().strip()
 
 

@@ -1,10 +1,12 @@
 import logging
 from datetime import datetime
+from zoneinfo import ZoneInfo
 
 from .constants import (
     DEFAULT_GOOGLE_SHEET_VALUE_INPUT_OPTION,
     DEFAULT_GOOGLE_SHEET_RANGE_NAME,
     DEFAULT_GOOGLE_SHEET_COMPLETE_RANGE_NAME,
+    DEFAULT_TIMEZONE,
 )
 from .services import SheetService, DriveService
 
@@ -13,14 +15,20 @@ logger = logging.getLogger(__name__)
 
 
 class BloodPressureRecord:
-    def __init__(self, sys, dia, hb=None, timestamp=None):
+    def __init__(self,
+        sys,
+        dia,
+        hb=None,
+        timestamp=None,
+        tz=ZoneInfo(DEFAULT_TIMEZONE),
+    ):
         self.sys = sys
         self.dia = dia
         self.hb = hb if hb else "N/A"
         self.timestamp = timestamp
 
         if self.timestamp is None:
-            self.timestamp = datetime.now().isoformat()
+            self.timestamp = datetime.now().astimezone(tz=tz).isoformat()
 
     def to_values(self):
         """Returns a list of its values."""

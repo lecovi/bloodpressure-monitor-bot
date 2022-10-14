@@ -1,3 +1,4 @@
+from datetime import datetime
 import logging
 
 from emoji import emojize
@@ -104,6 +105,7 @@ async def last(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
     for record in records:
         timestamp, sys, dia, hb = record
+        timestamp = datetime.fromisoformat(timestamp).strftime("%c")
         answer += f":calendar: {timestamp} :heart: <strong>{sys}/{dia}</strong> {hb}\n"
 
     await update.message.reply_text(
