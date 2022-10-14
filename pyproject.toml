@@ -12,6 +12,9 @@ google-auth-httplib2 = "^0.1.0"
 google-auth-oauthlib = "^0.5.2"
 python-telegram-bot = {version = "^20.0a2", allow-prereleases = true}
 emoji = "^1.7.0"
+sqlmodel = "^0.0.8"
+typer = {extras = ["all"], version = "^0.6.1"}
+psycopg2-binary = "^2.9.4"
 
 [tool.poetry.dev-dependencies]
 jupyterlab = "^3.4.3"

@@ -1,94 +1,83 @@
-from multiprocessing import allow_connection_pickling
-from multiprocessing.connection import answer_challenge
-import re
+import os
 import logging
 
-from emoji import emojize
-from telegram import Update, ForceReply
+from telegram import MessageEntity
 from telegram.ext import (
     ApplicationBuilder,
     CommandHandler,
-    ContextTypes,
+    ConversationHandler,
     MessageHandler,
     filters,
 )
 
-from bloodpressure_monitor_bot.gapi.helpers import (
-    sheet, SPREADSHEET_ID, RANGE, SPREADSHEET_URL, add_record
-    )
-
-
-BLOODPRESSURE_REGEX_PATTERN = "(\d{2,3})\/(\d{2,3})( (\d{2,3}))?"
+from bloodpressure_monitor_bot.bot.errors import error_handler
+from bloodpressure_monitor_bot.bot.commands import (
+    start,
+    last,
+    status,
+    help,
+    connect,
+    cancel,
+)
+from bloodpressure_monitor_bot.bot.conversation import (
+    ask_mail,
+    create_sheet,
+    consent,
+    echo,
+)
+from bloodpressure_monitor_bot.bot.constants import (
+    MAIL, 
+    CONSENT,
+    CREATE_SHEET,
+    REGISTER_TA,
+)
 
 
 # Enable logging
 logging.basicConfig(
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.DEBUG
 )
-
 logger = logging.getLogger(__name__)
 
 
-with open("credentials/telegram_bot.token") as f:
+TG_TOKEN_FILE=os.getenv("TG_TOKEN_FILE")
+with open(TG_TOKEN_FILE) as f:
     TOKEN = f.read().strip()
 
 
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Send a message when the command /start is issued."""
-    user = update.effective_user
-
-    result = sheet.values().get(
-        spreadsheetId=SPREADSHEET_ID, 
-        range=RANGE
-    ).execute()
-
-    values = result.get('values', [])
-
-    welcome_message = emojize(f"""Hi {user.mention_html()}!
-Connected with GOOGLE :link: <a href="{SPREADSHEET_URL}">Spreadsheet</a>. 
-Spreasheet has <b>{len(values)-1} records</b> :chart_increasing:.
-""", language='alias')
-
-    await update.message.reply_html(welcome_message)
-
-
-async def hello(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    await update.message.reply_text(f'Hello {update.effective_user.first_name}')
-
-
-async def echo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Echo the user message."""
-    message = update.message.text
-    answer = emojize("Perdón, no te entendí :worried_face:", language='alias')
-
-    match = re.match(BLOODPRESSURE_REGEX_PATTERN, message)
-    if match:
-        systolic = match.group(1)
-        diastolic = match.group(2)
-        heart_beat = match.group(3)
-        if heart_beat:
-            heart_beat = match.group(4)
-
-        result = add_record(
-            sheet=sheet,
-            systolic=systolic,
-            diastolic=diastolic,
-            heart_beat=heart_beat
-        )
-
-        if result:
-            answer = f"SYS={systolic} DIA={diastolic} HB={heart_beat}"
-            logger.info("@%s registered %s", update.effective_user['username'], answer)
-        else:
-            answer = f":collision: Something went wrong trying to add record on spreadsheet"
-
-    await update.message.reply_text(answer)
+conversation_handler = ConversationHandler(
+    entry_points=[CommandHandler("start", start)],
+    states={
+        MAIL: [
+            MessageHandler(filters.Regex("^(Yes|No)$"), ask_mail),
+        ],
+        CREATE_SHEET: [
+            MessageHandler(filters.Entity(MessageEntity.EMAIL), create_sheet),
+        ],
+        CONSENT: [
+            MessageHandler(filters.Regex("^(Compartir|No compartir)$"), consent),
+        ],
+        REGISTER_TA: [
+            MessageHandler(filters.TEXT & ~filters.COMMAND, echo),
+        ]
+    },
+    fallbacks=[
+        CommandHandler("cancel", cancel),
+    ],
+)
 
 
 app = ApplicationBuilder().token(TOKEN).build()
 
-app.add_handler(CommandHandler("hello", hello))
-app.add_handler(CommandHandler("start", start))
+app.add_handler(CommandHandler("last", last))
+app.add_handler(CommandHandler("status", status))
+app.add_handler(CommandHandler("help", help))
+app.add_handler(CommandHandler("connect", connect))
+
+app.add_handler(conversation_handler)
 app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, echo))
+
+app.add_error_handler(error_handler)
+
 
 app.run_polling()
