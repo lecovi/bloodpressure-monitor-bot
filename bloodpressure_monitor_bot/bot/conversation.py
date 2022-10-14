@@ -65,7 +65,9 @@ async def create_sheet(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
     )
 
     sheet = Sheet(service_account_file=SERVICE_ACCOUNT_FILE, user_email=user_email)
-    sheet.create_shared_sheet(title=f"Bloodpressure Monitor Sheet for {user_email}")
+    sheet.create_shared_sheet(
+        title=f"Bloodpressure Monitor Sheet for @{tg_user.username}"
+    )
     context.bot_data["sheet"] = sheet
 
     message = f"""Hi {tg_user.mention_html()}!
@@ -152,13 +154,14 @@ async def echo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
                 sheet.spreadsheet_id = user.gsheet_id
             sheet.add_record(record)
 
-            _, sys, dia, hb = record.to_values()
+            _, sys, dia, hb, comments = record.to_values()
             answer = f":heart: <strong>{sys}/{dia}</strong> {hb}"
-            logger.info("@%s registered SYS=%s DIA=%s HB=%s",
+            logger.info("@%s registered SYS=%s DIA=%s HB=%s comments=%s",
                 update.effective_user['username'],
                 sys,
                 dia,
                 hb,
+                comments,
             )
         except Exception as e:
             answer = ":collision: Something went wrong trying to add record :collision:"

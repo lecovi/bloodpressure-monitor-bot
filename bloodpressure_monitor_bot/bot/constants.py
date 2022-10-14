@@ -1,4 +1,5 @@
 BLOODPRESSURE_REGEX_PATTERN = "(\d{2,3})\/(\d{2,3})( (\d{2,3}))?"
+NEW_BLOODPRESSURE_REGEX_PATTERN="^(\d{2,3})\/(\d{2,3})( (\d{2,3}))?( (.*))?$"
 DEVELOPER_CHAT_ID = 9691064
 HELP_MESSAGE = """:robot: <strong>How to use this bot</strong> :question:
 

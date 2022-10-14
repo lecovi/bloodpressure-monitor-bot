@@ -37,10 +37,10 @@ If you want to use your own Bot with your own Google Credentials your need to fo
 
 # TODO
 
-- [ ] Ver cómo se puede manejar el timezone del mensaje para que en el cliente aparezca "bien"
+- [x] Ver cómo se puede manejar el timezone del mensaje para que en el cliente aparezca "bien"
 - [x] Sumar DB para relacionar clientes con hojas de cálculo
 - [x] Armar flujo de conversación para `/start`
-- [ ] Soporte para comments en la medición
+- [x] Soporte para comments en la medición
 
 ## Google API
 

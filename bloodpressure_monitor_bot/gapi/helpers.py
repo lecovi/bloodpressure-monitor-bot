@@ -19,6 +19,7 @@ class BloodPressureRecord:
         sys,
         dia,
         hb=None,
+        comments=None,
         timestamp=None,
         tz=ZoneInfo(DEFAULT_TIMEZONE),
     ):
@@ -26,6 +27,7 @@ class BloodPressureRecord:
         self.dia = dia
         self.hb = hb if hb else "N/A"
         self.timestamp = timestamp
+        self.comments = comments
 
         if self.timestamp is None:
             self.timestamp = datetime.now().astimezone(tz=tz).isoformat()
@@ -37,6 +39,7 @@ class BloodPressureRecord:
             self.sys,
             self.dia,
             self.hb,
+            self.comments,
         ]
 
     def to_spreadsheet_body(self):
@@ -80,7 +83,9 @@ class BloodPressureSheet:
 
     def _write_bloodpressure_headers(self, headers: list|None = None):
         body = {
-            "values": headers if headers else [["Timestamp", "SYS", "DIA", "HB"],]
+            "values": headers if headers else [
+                    ["Timestamp", "SYS", "DIA", "HB", "Comments"],
+                ]
         }
         with SheetService(self._service_account_file) as gservice:
             self._last_result = gservice.spreadsheets().values().append(
